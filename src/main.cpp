@@ -118,7 +118,7 @@ for (int i = 0; i < sensor_fusion.size(); i++) {
         double vx = sensor_fusion[i][3];
         double vy = sensor_fusion[i][4];
         double check_speed = sqrt(vx*vx + vy*vy);
-        double check_car_s = sensor_fusion[i][4];
+        double check_car_s = sensor_fusion[i][5];
 
         check_car_s += ((double) prev_size*0.02*check_speed);
         if ((check_car_s > car_s) && ((check_car_s - car_s) < 30)) {
@@ -151,8 +151,8 @@ double ref_y = car_y;
 double ref_yaw = deg2rad(car_yaw);
 
 if (prev_size < 2) {
-  double prev_car_x = car_x - cos(car_yaw);
-  double prev_car_y = car_y - sin(car_yaw);
+  double prev_car_x = car_x - ref_vel*0.02*cos(ref_yaw);
+  double prev_car_y = car_y - ref_vel*0.02*sin(ref_yaw);
 
   ptsx.push_back(prev_car_x);
   ptsx.push_back(car_x);
@@ -171,7 +171,7 @@ else {
   ref_yaw =  atan2(ref_y - ref_y_prev, ref_x - ref_x_prev);
 
   ptsx.push_back(ref_x_prev);
-  ptsx.push_back(ref_y);
+  ptsx.push_back(ref_x);
   ptsy.push_back(ref_y_prev);
   ptsy.push_back(ref_y);
 }
@@ -188,12 +188,14 @@ ptsy.push_back(next_wp0[1]);
 ptsy.push_back(next_wp1[1]);
 ptsy.push_back(next_wp2[1]);
 
+//std::cout << "ptsx, ptsy:" << std::endl;
 for (int i = 0; i < ptsx.size(); i++) {
   double shift_x = ptsx[i] - ref_x;
   double shift_y = ptsy[i] - ref_y;
 
   ptsx[i] = (shift_x * cos(0 -  ref_yaw) - shift_y*sin(0-ref_yaw));
   ptsy[i] = (shift_x * sin(0 -  ref_yaw) + shift_y*cos(0-ref_yaw));
+  //std::cout << i << " : " << ptsx[i] << " " << ptsy[i] << " " << deg2rad(ref_yaw) << std::endl;
 }
 
 tk::spline s;
@@ -230,6 +232,11 @@ for (int i = 0; i <= 50-previous_path_x.size(); i++) {
   next_x_vals.push_back(x_point);
   next_y_vals.push_back(y_point);
 }
+
+//std::cout << "Next Vals:" << std::endl;
+//for (int i = 0; i < next_x_vals.size(); i++) {
+//  std::cout << next_x_vals[i] << " " << next_y_vals[i] << std::endl;
+//}
 
           msgJson["next_x"] = next_x_vals;
           msgJson["next_y"] = next_y_vals;
