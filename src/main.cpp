@@ -54,8 +54,13 @@ int main() {
 
   int lane = 1;
   double ref_vel = 0.0;
+  Vehicle ego;
+  ego.lane = 1;
+  ego.map_waypoints_x = map_waypoints_x;
+  ego.map_waypoints_y = map_waypoints_y;
+  ego.map_waypoints_s = map_waypoints_s;
 
-  h.onMessage([&lane, &ref_vel, &map_waypoints_x,&map_waypoints_y,&map_waypoints_s,
+  h.onMessage([&ego, &lane, &ref_vel, &map_waypoints_x,&map_waypoints_y,&map_waypoints_s,
                &map_waypoints_dx,&map_waypoints_dy]
               (uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
                uWS::OpCode opCode) {
@@ -112,16 +117,11 @@ if (prev_size > 0) {
 
 // find ref_v to use
 
-Vehicle ego;
 ego.x = car_x;
 ego.y = car_y;
 ego.s = car_s;
 ego.d = car_d;
-ego.lane = 1;
 ego.yaw = car_yaw;
-ego.map_waypoints_x = map_waypoints_x;
-ego.map_waypoints_y = map_waypoints_y;
-ego.map_waypoints_s = map_waypoints_s;
 //ego.v = car_speed;
 ego.previous_path_x.resize(previous_path_x.size());
 ego.previous_path_y.resize(previous_path_y.size());
@@ -380,11 +380,11 @@ Trajectory Vehicle::keep_lane_trajectory(string state, vector<vector<double>> se
   
   if (too_close) {
     ref_vel -= 0.224; // Decrement by about 5 m/s
-    std::cout << "decrementing ref_vel" << ref_vel;
+    //std::cout << "decrementing ref_vel" << ref_vel;
   }
   else if (ref_vel < 49.5) {
     ref_vel += 0.224;
-    std::cout << "incrementing ref_vel" << ref_vel;
+    //std::cout << "incrementing ref_vel" << ref_vel;
   }
   
   // Create a list of widely spaced (x,y) points, evenly spaced at 30 m
