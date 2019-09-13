@@ -52,15 +52,13 @@ int main() {
     map_waypoints_dy.push_back(d_y);
   }
 
-  int lane = 1;
-  double ref_vel = 0.0;
   Vehicle ego;
   ego.lane = 1;
   ego.map_waypoints_x = map_waypoints_x;
   ego.map_waypoints_y = map_waypoints_y;
   ego.map_waypoints_s = map_waypoints_s;
 
-  h.onMessage([&ego, &lane, &ref_vel, &map_waypoints_x,&map_waypoints_y,&map_waypoints_s,
+  h.onMessage([&ego, &map_waypoints_x,&map_waypoints_y,&map_waypoints_s,
                &map_waypoints_dx,&map_waypoints_dy]
               (uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
                uWS::OpCode opCode) {
@@ -122,7 +120,6 @@ ego.y = car_y;
 ego.s = car_s;
 ego.d = car_d;
 ego.yaw = car_yaw;
-//ego.v = car_speed;
 ego.previous_path_x.resize(previous_path_x.size());
 ego.previous_path_y.resize(previous_path_y.size());
 for(int i=0; i < previous_path_x.size(); i++) {
