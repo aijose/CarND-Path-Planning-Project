@@ -8,6 +8,8 @@
 #include <math.h>
 #include "spline.h"
 
+#define MAX_LANES 3
+
 using std::map;
 using std::string;
 using std::vector;
@@ -40,6 +42,8 @@ class Vehicle {
   Trajectory keep_lane_trajectory(string state, vector<vector<double>> sensor_fusion);
 
   Trajectory lane_change_trajectory(string state, vector<vector<double>> sensor_fusion);
+
+  void determine_lane();
 
   //vector<Vehicle> prep_lane_change_trajectory(string state, 
   //                                            map<int, vector<Vehicle>> &predictions);

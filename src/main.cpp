@@ -119,6 +119,7 @@ ego.x = car_x;
 ego.y = car_y;
 ego.s = car_s;
 ego.d = car_d;
+ego.determine_lane();
 ego.yaw = car_yaw;
 ego.previous_path_x.resize(previous_path_x.size());
 ego.previous_path_y.resize(previous_path_y.size());
@@ -347,14 +348,15 @@ Trajectory Vehicle::constant_speed_trajectory() {
 Trajectory Vehicle::keep_lane_trajectory(string state, vector<vector<double>> sensor_fusion) {
   // Generate a keep lane trajectory.
   Trajectory trajectory;
-  //int lane = 1;
   int prev_size = previous_path_x.size();
+  int intended_lane;
   bool too_close = false;
   double car_x = x;
   double car_y = y;
   double car_s = s;
   double car_yaw = yaw;
 
+  intended_lane = lane;
   for (int i = 0; i < sensor_fusion.size(); i++) {
       float d = sensor_fusion[i][6];
       if (d < (2+4*lane+2) && d > (2+4*lane-2)) {
@@ -369,7 +371,7 @@ Trajectory Vehicle::keep_lane_trajectory(string state, vector<vector<double>> se
               too_close = true;
   
               if (lane > 0) {
-                  lane = 0;
+                  intended_lane = 0;
               }
           }
       }
@@ -421,9 +423,9 @@ Trajectory Vehicle::keep_lane_trajectory(string state, vector<vector<double>> se
     ptsy.push_back(ref_y);
   }
   
-  vector<double> next_wp0 = getXY(car_s+30, (2+4*lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
-  vector<double> next_wp1 = getXY(car_s+60, (2+4*lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
-  vector<double> next_wp2 = getXY(car_s+90, (2+4*lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
+  vector<double> next_wp0 = getXY(car_s+30, (2+4*intended_lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
+  vector<double> next_wp1 = getXY(car_s+60, (2+4*intended_lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
+  vector<double> next_wp2 = getXY(car_s+90, (2+4*intended_lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
   
   ptsx.push_back(next_wp0[0]);
   ptsx.push_back(next_wp1[0]);
@@ -541,6 +543,14 @@ Trajectory Vehicle::lane_change_trajectory(string state, vector<vector<double>> 
 
   Trajectory trajectory;
   return trajectory;
+}
+
+void Vehicle::determine_lane() {
+    for(int i=0; i < MAX_LANES; i++) {
+        if (d <= (2+4*i+2) && d > (2+4*i-2)) {
+            lane = i;
+        }
+    }
 }
 
 //void Vehicle::increment(int dt = 1) {
