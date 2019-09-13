@@ -119,7 +119,7 @@ ego.x = car_x;
 ego.y = car_y;
 ego.s = car_s;
 ego.d = car_d;
-ego.determine_lane();
+ego.determine_lane(car_d);
 ego.yaw = car_yaw;
 ego.previous_path_x.resize(previous_path_x.size());
 ego.previous_path_y.resize(previous_path_y.size());
@@ -304,6 +304,17 @@ Trajectory Vehicle::generate_trajectory(string state, vector<vector<double>> sen
   return trajectory;
 }
 
+bool Vehicle::is_lane_change_safe(int current_lane, int intended_lane, float ego_s, vector<vector<double>> sensor_fusion) {
+    double front_margin = 10.0;
+    double rear_margin = 20.0;
+    Vehicle vehicle_ahead, vehicle_behind;
+    get_nearest_vehicles(ego_s, sensor_fusion, intended_lane, vehicle_ahead, vehicle_behind);
+    if(vehicle_ahead.s - ego_s > front_margin && ego_s - vehicle_behind.s > rear_margin)
+        return true;
+    else
+        return false;
+}
+
 //vector<float> Vehicle::get_kinematics(map<int, vector<Vehicle>> &predictions, 
 //                                      int lane) {
 //  // Gets next timestep kinematics (position, velocity, acceleration) 
@@ -364,14 +375,18 @@ Trajectory Vehicle::keep_lane_trajectory(string state, vector<vector<double>> se
           double vy = sensor_fusion[i][4];
           double check_speed = sqrt(vx*vx + vy*vy);
           double check_car_s = sensor_fusion[i][5];
+
   
           check_car_s += ((double) prev_size*0.02*check_speed);
           if ((check_car_s > car_s) && ((check_car_s - car_s) < 30)) {
               //ref_vel = 29.5;
               too_close = true;
   
-              if (lane > 0) {
-                  intended_lane = 0;
+              if(lane + 1 < MAX_LANES && is_lane_change_safe(lane, lane+1, car_s, sensor_fusion)) {
+                  intended_lane = lane+1;
+              }
+              else if (lane - 1 >= 0 && is_lane_change_safe(lane, lane-1, car_s, sensor_fusion)) {
+                  intended_lane = lane-1;
               }
           }
       }
@@ -545,9 +560,9 @@ Trajectory Vehicle::lane_change_trajectory(string state, vector<vector<double>> 
   return trajectory;
 }
 
-void Vehicle::determine_lane() {
+void Vehicle::determine_lane(float vehicle_d) {
     for(int i=0; i < MAX_LANES; i++) {
-        if (d <= (2+4*i+2) && d > (2+4*i-2)) {
+        if (vehicle_d <= (2+4*i+2) && vehicle_d > (2+4*i-2)) {
             lane = i;
         }
     }
@@ -581,25 +596,37 @@ void Vehicle::determine_lane() {
 //  
 //  return found_vehicle;
 //}
-//
-//bool Vehicle::get_vehicle_ahead(map<int, vector<Vehicle>> &predictions, 
-//                                int lane, Vehicle &rVehicle) {
-//  // Returns a true if a vehicle is found ahead of the current vehicle, false 
-//  //   otherwise. The passed reference rVehicle is updated if a vehicle is found.
-//  int min_s = this->goal_s;
-//  bool found_vehicle = false;
-//  Vehicle temp_vehicle;
-//  for (map<int, vector<Vehicle>>::iterator it = predictions.begin(); 
-//       it != predictions.end(); ++it) {
-//    temp_vehicle = it->second[0];
-//    if (temp_vehicle.lane == this->lane && temp_vehicle.s > this->s 
-//        && temp_vehicle.s < min_s) {
-//      min_s = temp_vehicle.s;
-//      rVehicle = temp_vehicle;
-//      found_vehicle = true;
-//    }
-//  }
-//  
+
+void Vehicle::get_nearest_vehicles(float ego_s, vector<vector<double>> sensor_fusion,
+                                int vehicle_lane, Vehicle &vehicle_ahead, Vehicle &vehicle_behind) {
+  Vehicle temp_vehicle;
+  float rear_distance = 1000000;
+  float front_distance = 1000000;
+  vehicle_ahead.s = front_distance;
+  vehicle_behind.s = -rear_distance;
+  for (int i=0; i < sensor_fusion.size(); i++) {
+    temp_vehicle.d = sensor_fusion[i][6];
+    if (temp_vehicle.d < (2+4*vehicle_lane+2) && temp_vehicle.d > (2+4*vehicle_lane-2)) {
+        temp_vehicle.s = sensor_fusion[i][5];
+        float difference_s = temp_vehicle.s - ego_s;
+        if(difference_s <= 0.0 && abs(difference_s) < rear_distance) {
+            rear_distance = abs(difference_s);
+            double vx = sensor_fusion[i][3];
+            double vy = sensor_fusion[i][4];
+            vehicle_behind.ref_vel = sqrt(vx*vx + vy*vy);
+            vehicle_behind.s = temp_vehicle.s;
+        }
+        if(difference_s > 0.0 && abs(difference_s) < front_distance) {
+            front_distance = abs(difference_s);
+            double vx = sensor_fusion[i][3];
+            double vy = sensor_fusion[i][4];
+            vehicle_ahead.ref_vel = sqrt(vx*vx + vy*vy);
+            vehicle_ahead.s = temp_vehicle.s;
+        }
+    }
+  }
+}
+
 //  return found_vehicle;
 //}
 //

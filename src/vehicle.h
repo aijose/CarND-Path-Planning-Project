@@ -43,7 +43,12 @@ class Vehicle {
 
   Trajectory lane_change_trajectory(string state, vector<vector<double>> sensor_fusion);
 
-  void determine_lane();
+  void determine_lane(float car_d);
+
+  void get_nearest_vehicles(float ego_s, vector<vector<double>> sensor_fusion,
+                                int vehicle_lane, Vehicle &vehicle_ahead, Vehicle &vehicle_behind);
+
+  bool is_lane_change_safe(int current_lane, int intended_lane, float ego_s, vector<vector<double>> sensor_fusion);
 
   //vector<Vehicle> prep_lane_change_trajectory(string state, 
   //                                            map<int, vector<Vehicle>> &predictions);
