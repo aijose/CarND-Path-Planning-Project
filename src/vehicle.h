@@ -31,7 +31,7 @@ class Vehicle {
   // Vehicle functions
   //vector<Vehicle> choose_next_state(map<int, vector<Vehicle>> &predictions);
 
-  //vector<string> successor_states();
+  vector<string> successor_states();
 
   Trajectory generate_trajectory(string state, vector<vector<double>> sensor_fusion);
 

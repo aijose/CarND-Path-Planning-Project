@@ -10,6 +10,9 @@
 #include "spline.h"
 #include "vehicle.h"
 
+#define TRAJECTORY_POINTS 50
+#define OVERLAP_POINTS 2
+
 // for convenience
 using nlohmann::json;
 using std::string;
@@ -108,9 +111,9 @@ int main() {
 
 int prev_size = previous_path_x.size();
 
-if (prev_size > 0) {
-  car_s = end_path_s;
-}
+//if (prev_size > 0) {
+//  car_s = end_path_s;
+//}
 
 
 // find ref_v to use
@@ -356,6 +359,20 @@ Trajectory Vehicle::constant_speed_trajectory() {
   return trajectory;
 }
 
+
+vector<string> Vehicle::successor_states() {
+  // Provides the possible next states given the current state for the FSM 
+  vector<string> states;
+  states.push_back("KL");
+  string state = this->state;
+  if(state.compare("KL") == 0) {
+    states.push_back("LCL");
+    states.push_back("LCR");
+  }     
+  // If state is "LCL" or "LCR", then just return "KL"
+  return states;
+}
+
 Trajectory Vehicle::keep_lane_trajectory(string state, vector<vector<double>> sensor_fusion) {
   // Generate a keep lane trajectory.
   Trajectory trajectory;
@@ -366,6 +383,8 @@ Trajectory Vehicle::keep_lane_trajectory(string state, vector<vector<double>> se
   double car_y = y;
   double car_s = s;
   double car_yaw = yaw;
+  int overlap_points = std::min(OVERLAP_POINTS,prev_size);
+  //int overlap_points = previous_path_x.size();
 
   intended_lane = lane;
   for (int i = 0; i < sensor_fusion.size(); i++) {
@@ -377,7 +396,7 @@ Trajectory Vehicle::keep_lane_trajectory(string state, vector<vector<double>> se
           double check_car_s = sensor_fusion[i][5];
 
   
-          check_car_s += ((double) prev_size*0.02*check_speed);
+          check_car_s += ((double) overlap_points*0.02*check_speed);
           if ((check_car_s > car_s) && ((check_car_s - car_s) < 30)) {
               //ref_vel = 29.5;
               too_close = true;
@@ -424,11 +443,11 @@ Trajectory Vehicle::keep_lane_trajectory(string state, vector<vector<double>> se
   
   }
   else {
-    ref_x = previous_path_x[prev_size - 1];
-    ref_y = previous_path_y[prev_size - 1];
+    ref_x = previous_path_x[overlap_points-1];
+    ref_y = previous_path_y[overlap_points-1];
   
-    double ref_x_prev = previous_path_x[prev_size - 2];
-    double ref_y_prev = previous_path_y[prev_size - 2];
+    double ref_x_prev = previous_path_x[overlap_points - 2];
+    double ref_y_prev = previous_path_y[overlap_points - 2];
   
     ref_yaw =  atan2(ref_y - ref_y_prev, ref_x - ref_x_prev);
   
@@ -464,7 +483,7 @@ Trajectory Vehicle::keep_lane_trajectory(string state, vector<vector<double>> se
   
   s.set_points(ptsx, ptsy);
   
-  for (int i = 0; i < previous_path_x.size(); i++) {
+  for (int i = 0; i < overlap_points; i++) {
     trajectory.xlocs.push_back(previous_path_x[i]);
     trajectory.ylocs.push_back(previous_path_y[i]);
   }
@@ -475,7 +494,7 @@ Trajectory Vehicle::keep_lane_trajectory(string state, vector<vector<double>> se
   
   double x_add_on = 0.0;
   
-  for (int i = 0; i <= 50-previous_path_x.size(); i++) {
+  for (int i = 0; i <= TRAJECTORY_POINTS-overlap_points; i++) {
     double N = (target_distance/(0.02 * ref_vel/2.24));
     double x_point  = x_add_on + target_x/N;
     double y_point  = s(x_point);
