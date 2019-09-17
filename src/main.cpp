@@ -57,6 +57,8 @@ int main() {
 
   Vehicle ego;
   ego.lane = 1;
+  ego.state = "KL";
+  ego.ref_vel = 0.0;
   ego.map_waypoints_x = map_waypoints_x;
   ego.map_waypoints_y = map_waypoints_y;
   ego.map_waypoints_s = map_waypoints_s;
@@ -132,11 +134,32 @@ ego.previous_path_y[i] = previous_path_y[i];
 }
 
 double min_cost = 1000000.0;
-string state = "KL";
-auto trajectory = ego.generate_trajectory(state, sensor_fusion);
+Trajectory trajectory, best_trajectory;
+string best_state;
+//vector<Trajectory> all_trajectories;
+vector<std::string> states = ego.successor_states();
+for(int i=0; i < states.size(); i++) {
+    std::string state = states[i];
+    trajectory = ego.generate_trajectory(state, sensor_fusion);
+    //all_trajectories.push_back(trajectory);
+    float cost = min_cost;
+    if (trajectory.xlocs.size() > 0)
+        cost = ego.compute_cost(trajectory);
+    std::cout<< state << " cost : " << cost << std::endl;
+    if (cost < min_cost) {
+        best_trajectory = trajectory;
+        best_state = state;
+    }
+}
 
-next_x_vals = trajectory.xlocs;
-next_y_vals = trajectory.ylocs;
+//string best_state = "KL";
+//auto best_trajectory = ego.generate_trajectory(best_state, sensor_fusion);
+
+ego.lane = best_trajectory.intended_lane;
+ego.state = best_state;
+//ego.ref_vel = best_trajectory.modified_velocity;
+next_x_vals = best_trajectory.xlocs;
+next_y_vals = best_trajectory.ylocs;
 //for(int i=0; i < next_x_vals.size(); i++) {
 //  std::cout<<next_x_vals[i]<< " " << next_y_vals[i] << std::endl;
 //
@@ -301,15 +324,27 @@ Trajectory Vehicle::generate_trajectory(string state, vector<vector<double>> sen
   } else if (state.compare("KL") == 0) {
     trajectory = keep_lane_trajectory(state, sensor_fusion);
   } else if (state.compare("LCL") == 0 || state.compare("LCR") == 0) {
-    trajectory = lane_change_trajectory(state, sensor_fusion);
+      trajectory = keep_lane_trajectory(state, sensor_fusion);
+      //if(state.compare("LCL") == 0) {
+      //    trajectory = lane_change_trajectory(lane-1, sensor_fusion);
+      //    trajectory.intended_lane = lane-1;
+      //}
+      //else {
+      //    trajectory = lane_change_trajectory(lane+1, sensor_fusion);
+      //    trajectory.intended_lane = lane+1;
+      //}
   } 
 
   return trajectory;
 }
 
 bool Vehicle::is_lane_change_safe(int current_lane, int intended_lane, float ego_s, vector<vector<double>> sensor_fusion) {
-    double front_margin = 10.0;
+    double front_margin = 20.0;
     double rear_margin = 20.0;
+
+    if(current_lane == 1) {
+        front_margin = 35.0;
+    }
     Vehicle vehicle_ahead, vehicle_behind;
     get_nearest_vehicles(ego_s, sensor_fusion, intended_lane, vehicle_ahead, vehicle_behind);
     if(vehicle_ahead.s - ego_s > front_margin && ego_s - vehicle_behind.s > rear_margin)
@@ -383,6 +418,7 @@ Trajectory Vehicle::keep_lane_trajectory(string state, vector<vector<double>> se
   double car_y = y;
   double car_s = s;
   double car_yaw = yaw;
+  //double ref_vel = this->ref_vel;
   int overlap_points = std::min(OVERLAP_POINTS,prev_size);
   //int overlap_points = previous_path_x.size();
 
@@ -415,7 +451,7 @@ Trajectory Vehicle::keep_lane_trajectory(string state, vector<vector<double>> se
     ref_vel -= 0.224; // Decrement by about 5 m/s
     //std::cout << "decrementing ref_vel" << ref_vel;
   }
-  else if (ref_vel < 49.5) {
+  else if (ref_vel < 49.0) {
     ref_vel += 0.224;
     //std::cout << "incrementing ref_vel" << ref_vel;
   }
@@ -513,6 +549,13 @@ Trajectory Vehicle::keep_lane_trajectory(string state, vector<vector<double>> se
     trajectory.xlocs.push_back(x_point);
     trajectory.ylocs.push_back(y_point);
   }
+
+  Vehicle vehicle_ahead, vehicle_behind;
+  get_nearest_vehicles(car_s, sensor_fusion, intended_lane, vehicle_ahead, vehicle_behind);
+  trajectory.lane_speed = vehicle_ahead.ref_vel;
+  trajectory.vehicle_ahead_distance = vehicle_ahead.s - car_s;
+  trajectory.intended_lane = lane;
+  trajectory.modified_velocity = ref_vel;
   
   return trajectory;
 }
@@ -554,28 +597,124 @@ Trajectory Vehicle::keep_lane_trajectory(string state, vector<vector<double>> se
 //  return trajectory;
 //}
 
-Trajectory Vehicle::lane_change_trajectory(string state, vector<vector<double>> sensor_fusion) {
-  //// Generate a lane change trajectory.
-  //int new_lane = this->lane + lane_direction[state];
-  //vector<Vehicle> trajectory;
-  //Vehicle next_lane_vehicle;
-  //// Check if a lane change is possible (check if another vehicle occupies 
-  ////   that spot).
-  //for (map<int, vector<Vehicle>>::iterator it = predictions.begin(); 
-  //     it != predictions.end(); ++it) {
-  //  next_lane_vehicle = it->second[0];
-  //  if (next_lane_vehicle.s == this->s && next_lane_vehicle.lane == new_lane) {
-  //    // If lane change is not possible, return empty trajectory.
-  //    return trajectory;
-  //  }
-  //}
-  //trajectory.push_back(Vehicle(this->lane, this->s, this->v, this->a, 
-  //                             this->state));
-  //vector<float> kinematics = get_kinematics(predictions, new_lane);
-  //trajectory.push_back(Vehicle(new_lane, kinematics[0], kinematics[1], 
-  //                             kinematics[2], state));
-
+Trajectory Vehicle::lane_change_trajectory(int intended_lane, vector<vector<double>> sensor_fusion) {
+  // Generate a keep lane trajectory.
   Trajectory trajectory;
+  int prev_size = previous_path_x.size();
+  double car_x = x;
+  double car_y = y;
+  double car_s = s;
+  double car_yaw = yaw;
+  double ref_vel = this->ref_vel;
+  int overlap_points = std::min(OVERLAP_POINTS,prev_size);
+  //int overlap_points = previous_path_x.size();
+
+  if(intended_lane >= MAX_LANES || !is_lane_change_safe(lane, intended_lane, car_s, sensor_fusion)) {
+      return trajectory;
+  }
+  else if (intended_lane < 0 || !is_lane_change_safe(lane, intended_lane, car_s, sensor_fusion)) {
+      return trajectory;
+  }
+  
+  // Create a list of widely spaced (x,y) points, evenly spaced at 30 m
+  // Later we will interpolate these waypoints with a spline and fill it in
+  // with more points that control
+  
+  vector<double> ptsx;
+  vector<double> ptsy;
+  
+  double ref_x = car_x;
+  double ref_y = car_y;
+  double ref_yaw = deg2rad(car_yaw);
+  
+  if (prev_size < 2) {
+    double prev_car_x = car_x - ref_vel*0.02*cos(ref_yaw);
+    double prev_car_y = car_y - ref_vel*0.02*sin(ref_yaw);
+  
+    ptsx.push_back(prev_car_x);
+    ptsx.push_back(car_x);
+  
+    ptsy.push_back(prev_car_y);
+    ptsy.push_back(car_y);
+  
+  }
+  else {
+    ref_x = previous_path_x[overlap_points-1];
+    ref_y = previous_path_y[overlap_points-1];
+  
+    double ref_x_prev = previous_path_x[overlap_points - 2];
+    double ref_y_prev = previous_path_y[overlap_points - 2];
+  
+    ref_yaw =  atan2(ref_y - ref_y_prev, ref_x - ref_x_prev);
+  
+    ptsx.push_back(ref_x_prev);
+    ptsx.push_back(ref_x);
+    ptsy.push_back(ref_y_prev);
+    ptsy.push_back(ref_y);
+  }
+  
+  vector<double> next_wp0 = getXY(car_s+30, (2+4*intended_lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
+  vector<double> next_wp1 = getXY(car_s+60, (2+4*intended_lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
+  vector<double> next_wp2 = getXY(car_s+90, (2+4*intended_lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
+  
+  ptsx.push_back(next_wp0[0]);
+  ptsx.push_back(next_wp1[0]);
+  ptsx.push_back(next_wp2[0]);
+  
+  ptsy.push_back(next_wp0[1]);
+  ptsy.push_back(next_wp1[1]);
+  ptsy.push_back(next_wp2[1]);
+  
+  //std::cout << "ptsx, ptsy:" << std::endl;
+  for (int i = 0; i < ptsx.size(); i++) {
+    double shift_x = ptsx[i] - ref_x;
+    double shift_y = ptsy[i] - ref_y;
+  
+    ptsx[i] = (shift_x * cos(0 -  ref_yaw) - shift_y*sin(0-ref_yaw));
+    ptsy[i] = (shift_x * sin(0 -  ref_yaw) + shift_y*cos(0-ref_yaw));
+    //std::cout << i << " : " << ptsx[i] << " " << ptsy[i] << " " << deg2rad(ref_yaw) << std::endl;
+  }
+  
+  tk::spline s;
+  
+  s.set_points(ptsx, ptsy);
+  
+  for (int i = 0; i < overlap_points; i++) {
+    trajectory.xlocs.push_back(previous_path_x[i]);
+    trajectory.ylocs.push_back(previous_path_y[i]);
+  }
+  
+  double target_x = 30.0;
+  double target_y = s(target_x);
+  double target_distance = sqrt(target_x*target_x + target_y*target_y);
+  
+  double x_add_on = 0.0;
+  
+  for (int i = 0; i <= TRAJECTORY_POINTS-overlap_points; i++) {
+    double N = (target_distance/(0.02 * ref_vel/2.24));
+    double x_point  = x_add_on + target_x/N;
+    double y_point  = s(x_point);
+  
+    x_add_on = x_point;
+  
+    double x_ref = x_point;
+    double y_ref = y_point;
+  
+    x_point = (x_ref * cos(ref_yaw) - y_ref*sin(ref_yaw));
+    y_point = (x_ref * sin(ref_yaw) + y_ref*cos(ref_yaw));
+  
+    x_point += ref_x;
+    y_point += ref_y;
+  
+    trajectory.xlocs.push_back(x_point);
+    trajectory.ylocs.push_back(y_point);
+  }
+  
+  Vehicle vehicle_ahead, vehicle_behind;
+  get_nearest_vehicles(car_s, sensor_fusion, intended_lane, vehicle_ahead, vehicle_behind);
+  trajectory.lane_speed = vehicle_ahead.ref_vel;
+  trajectory.vehicle_ahead_distance = vehicle_ahead.s - car_s;
+  trajectory.modified_velocity = ref_vel;
   return trajectory;
 }
 
@@ -615,6 +754,12 @@ void Vehicle::determine_lane(float vehicle_d) {
 //  
 //  return found_vehicle;
 //}
+//
+
+float Vehicle::compute_cost(Trajectory trajectory) {
+    if(trajectory.xlocs.size() == 0) return 1000000.0;
+    return -trajectory.lane_speed;
+}
 
 void Vehicle::get_nearest_vehicles(float ego_s, vector<vector<double>> sensor_fusion,
                                 int vehicle_lane, Vehicle &vehicle_ahead, Vehicle &vehicle_behind) {
@@ -622,6 +767,7 @@ void Vehicle::get_nearest_vehicles(float ego_s, vector<vector<double>> sensor_fu
   float rear_distance = 1000000;
   float front_distance = 1000000;
   vehicle_ahead.s = front_distance;
+  vehicle_ahead.ref_vel = 1000.0;
   vehicle_behind.s = -rear_distance;
   for (int i=0; i < sensor_fusion.size(); i++) {
     temp_vehicle.d = sensor_fusion[i][6];

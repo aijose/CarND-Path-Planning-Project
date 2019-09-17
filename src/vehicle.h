@@ -17,6 +17,11 @@ using std::vector;
 struct Trajectory {
     vector<double> xlocs;
     vector<double> ylocs;
+    vector<double> velocities;
+    float vehicle_ahead_distance;
+    float lane_speed;
+    int intended_lane;
+    int modified_velocity;
 };
 
 class Vehicle {
@@ -41,12 +46,16 @@ class Vehicle {
 
   Trajectory keep_lane_trajectory(string state, vector<vector<double>> sensor_fusion);
 
-  Trajectory lane_change_trajectory(string state, vector<vector<double>> sensor_fusion);
+  Trajectory lane_change_trajectory(int intended_lane, vector<vector<double>> sensor_fusion);
+
+  float compute_cost(Trajectory trajectory);
 
   void determine_lane(float car_d);
 
   void get_nearest_vehicles(float ego_s, vector<vector<double>> sensor_fusion,
                                 int vehicle_lane, Vehicle &vehicle_ahead, Vehicle &vehicle_behind);
+
+  void get_lane_speed(float ego_s, int vehicle_lane, vector<vector<double>> sensor_fusion);
 
   bool is_lane_change_safe(int current_lane, int intended_lane, float ego_s, vector<vector<double>> sensor_fusion);
 
