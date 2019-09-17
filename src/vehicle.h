@@ -97,6 +97,7 @@ class Vehicle {
   float ref_vel, target_speed, a, max_acceleration;
   vector<double> previous_path_x, previous_path_y;
   vector<double> map_waypoints_s, map_waypoints_x, map_waypoints_y;
+  Trajectory previous_trajectory;
 
   string state;
 };

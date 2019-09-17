@@ -58,7 +58,6 @@ int main() {
   Vehicle ego;
   ego.lane = 1;
   ego.state = "KL";
-  ego.ref_vel = 0.0;
   ego.map_waypoints_x = map_waypoints_x;
   ego.map_waypoints_y = map_waypoints_y;
   ego.map_waypoints_s = map_waypoints_s;
@@ -155,6 +154,7 @@ for(int i=0; i < states.size(); i++) {
 //string best_state = "KL";
 //auto best_trajectory = ego.generate_trajectory(best_state, sensor_fusion);
 
+ego.previous_trajectory = best_trajectory;
 ego.lane = best_trajectory.intended_lane;
 ego.state = best_state;
 //ego.ref_vel = best_trajectory.modified_velocity;
@@ -421,6 +421,13 @@ Trajectory Vehicle::keep_lane_trajectory(string state, vector<vector<double>> se
   //double ref_vel = this->ref_vel;
   int overlap_points = std::min(OVERLAP_POINTS,prev_size);
   //int overlap_points = previous_path_x.size();
+  //
+  int consumed_points = previous_trajectory.xlocs.size() - previous_path_x.size();
+  std::cout << "consumed_points = " << consumed_points << std::endl;
+  if(prev_size != 0) 
+      ref_vel = previous_trajectory.velocities[consumed_points-1];
+  else
+      ref_vel = 0.0;
 
   intended_lane = lane;
   for (int i = 0; i < sensor_fusion.size(); i++) {
@@ -522,6 +529,7 @@ Trajectory Vehicle::keep_lane_trajectory(string state, vector<vector<double>> se
   for (int i = 0; i < overlap_points; i++) {
     trajectory.xlocs.push_back(previous_path_x[i]);
     trajectory.ylocs.push_back(previous_path_y[i]);
+    trajectory.velocities.push_back(previous_trajectory.velocities[consumed_points+i]);
   }
   
   double target_x = 30.0;
@@ -548,6 +556,7 @@ Trajectory Vehicle::keep_lane_trajectory(string state, vector<vector<double>> se
   
     trajectory.xlocs.push_back(x_point);
     trajectory.ylocs.push_back(y_point);
+    trajectory.velocities.push_back(ref_vel);
   }
 
   Vehicle vehicle_ahead, vehicle_behind;
