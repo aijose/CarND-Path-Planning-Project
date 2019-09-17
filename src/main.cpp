@@ -156,7 +156,7 @@ for(int i=0; i < states.size(); i++) {
 
 ego.previous_trajectory = best_trajectory;
 ego.lane = best_trajectory.intended_lane;
-ego.state = best_state;
+//ego.state = best_state;
 //ego.ref_vel = best_trajectory.modified_velocity;
 next_x_vals = best_trajectory.xlocs;
 next_y_vals = best_trajectory.ylocs;
@@ -324,15 +324,15 @@ Trajectory Vehicle::generate_trajectory(string state, vector<vector<double>> sen
   } else if (state.compare("KL") == 0) {
     trajectory = keep_lane_trajectory(state, sensor_fusion);
   } else if (state.compare("LCL") == 0 || state.compare("LCR") == 0) {
-      trajectory = keep_lane_trajectory(state, sensor_fusion);
-      //if(state.compare("LCL") == 0) {
-      //    trajectory = lane_change_trajectory(lane-1, sensor_fusion);
-      //    trajectory.intended_lane = lane-1;
-      //}
-      //else {
-      //    trajectory = lane_change_trajectory(lane+1, sensor_fusion);
-      //    trajectory.intended_lane = lane+1;
-      //}
+      //trajectory = keep_lane_trajectory(state, sensor_fusion);
+      if(state.compare("LCL") == 0) {
+          trajectory = lane_change_trajectory(lane-1, sensor_fusion);
+          trajectory.intended_lane = lane-1;
+      }
+      else {
+          trajectory = lane_change_trajectory(lane+1, sensor_fusion);
+          trajectory.intended_lane = lane+1;
+      }
   } 
 
   return trajectory;
@@ -444,12 +444,12 @@ Trajectory Vehicle::keep_lane_trajectory(string state, vector<vector<double>> se
               //ref_vel = 29.5;
               too_close = true;
   
-              if(lane + 1 < MAX_LANES && is_lane_change_safe(lane, lane+1, car_s, sensor_fusion)) {
-                  intended_lane = lane+1;
-              }
-              else if (lane - 1 >= 0 && is_lane_change_safe(lane, lane-1, car_s, sensor_fusion)) {
-                  intended_lane = lane-1;
-              }
+              //if(lane + 1 < MAX_LANES && is_lane_change_safe(lane, lane+1, car_s, sensor_fusion)) {
+              //    intended_lane = lane+1;
+              //}
+              //else if (lane - 1 >= 0 && is_lane_change_safe(lane, lane-1, car_s, sensor_fusion)) {
+              //    intended_lane = lane-1;
+              //}
           }
       }
   }
@@ -563,8 +563,8 @@ Trajectory Vehicle::keep_lane_trajectory(string state, vector<vector<double>> se
   get_nearest_vehicles(car_s, sensor_fusion, intended_lane, vehicle_ahead, vehicle_behind);
   trajectory.lane_speed = vehicle_ahead.ref_vel;
   trajectory.vehicle_ahead_distance = vehicle_ahead.s - car_s;
-  trajectory.intended_lane = lane;
   trajectory.modified_velocity = ref_vel;
+  trajectory.intended_lane = intended_lane;
   
   return trajectory;
 }
@@ -607,21 +607,51 @@ Trajectory Vehicle::keep_lane_trajectory(string state, vector<vector<double>> se
 //}
 
 Trajectory Vehicle::lane_change_trajectory(int intended_lane, vector<vector<double>> sensor_fusion) {
-  // Generate a keep lane trajectory.
   Trajectory trajectory;
   int prev_size = previous_path_x.size();
+  bool too_close = false;
   double car_x = x;
   double car_y = y;
   double car_s = s;
   double car_yaw = yaw;
-  double ref_vel = this->ref_vel;
+  //double ref_vel = this->ref_vel;
   int overlap_points = std::min(OVERLAP_POINTS,prev_size);
   //int overlap_points = previous_path_x.size();
+  //
+  int consumed_points = previous_trajectory.xlocs.size() - previous_path_x.size();
+  std::cout << "consumed_points = " << consumed_points << std::endl;
+  if(prev_size != 0) 
+      ref_vel = previous_trajectory.velocities[consumed_points-1];
+  else
+      ref_vel = 0.0;
 
-  if(intended_lane >= MAX_LANES || !is_lane_change_safe(lane, intended_lane, car_s, sensor_fusion)) {
-      return trajectory;
+  for (int i = 0; i < sensor_fusion.size(); i++) {
+      float d = sensor_fusion[i][6];
+      if (d < (2+4*lane+2) && d > (2+4*lane-2)) {
+          double vx = sensor_fusion[i][3];
+          double vy = sensor_fusion[i][4];
+          double check_speed = sqrt(vx*vx + vy*vy);
+          double check_car_s = sensor_fusion[i][5];
+
+  
+          check_car_s += ((double) overlap_points*0.02*check_speed);
+          if ((check_car_s > car_s) && ((check_car_s - car_s) < 30)) {
+              //ref_vel = 29.5;
+              too_close = true;
+  
+          }
+      }
   }
-  else if (intended_lane < 0 || !is_lane_change_safe(lane, intended_lane, car_s, sensor_fusion)) {
+  
+  if (too_close) {
+    ref_vel -= 0.224; // Decrement by about 5 m/s
+    //std::cout << "decrementing ref_vel" << ref_vel;
+  }
+  else if (ref_vel < 49.0) {
+    ref_vel += 0.224;
+    //std::cout << "incrementing ref_vel" << ref_vel;
+  }
+  if(!(too_close && intended_lane < MAX_LANES && intended_lane >= 0 && is_lane_change_safe(lane, intended_lane, car_s, sensor_fusion))) {
       return trajectory;
   }
   
@@ -691,6 +721,7 @@ Trajectory Vehicle::lane_change_trajectory(int intended_lane, vector<vector<doub
   for (int i = 0; i < overlap_points; i++) {
     trajectory.xlocs.push_back(previous_path_x[i]);
     trajectory.ylocs.push_back(previous_path_y[i]);
+    trajectory.velocities.push_back(previous_trajectory.velocities[consumed_points+i]);
   }
   
   double target_x = 30.0;
@@ -717,6 +748,7 @@ Trajectory Vehicle::lane_change_trajectory(int intended_lane, vector<vector<doub
   
     trajectory.xlocs.push_back(x_point);
     trajectory.ylocs.push_back(y_point);
+    trajectory.velocities.push_back(ref_vel);
   }
   
   Vehicle vehicle_ahead, vehicle_behind;
@@ -724,6 +756,7 @@ Trajectory Vehicle::lane_change_trajectory(int intended_lane, vector<vector<doub
   trajectory.lane_speed = vehicle_ahead.ref_vel;
   trajectory.vehicle_ahead_distance = vehicle_ahead.s - car_s;
   trajectory.modified_velocity = ref_vel;
+  trajectory.intended_lane = intended_lane;
   return trajectory;
 }
 
@@ -766,8 +799,21 @@ void Vehicle::determine_lane(float vehicle_d) {
 //
 
 float Vehicle::compute_cost(Trajectory trajectory) {
+    float cost;
     if(trajectory.xlocs.size() == 0) return 1000000.0;
-    return -trajectory.lane_speed;
+    if(trajectory.intended_lane == lane) {
+        cost = 750.0;
+    }
+    else if(trajectory.intended_lane == 1) {
+        cost = 500.0;
+    } 
+    else {
+        if (trajectory.intended_lane == 2)
+            cost = 250.0;
+        else
+            cost = 0.0;
+    }
+    return cost;
 }
 
 void Vehicle::get_nearest_vehicles(float ego_s, vector<vector<double>> sensor_fusion,
