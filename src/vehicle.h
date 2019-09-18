@@ -6,6 +6,7 @@
 #include <vector>
 #include "helpers.h"
 #include <math.h>
+#include <algorithm>
 #include "spline.h"
 
 #define MAX_LANES 3

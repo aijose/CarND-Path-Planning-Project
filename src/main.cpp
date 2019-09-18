@@ -340,14 +340,15 @@ Trajectory Vehicle::generate_trajectory(string state, vector<vector<double>> sen
 
 bool Vehicle::is_lane_change_safe(int current_lane, int intended_lane, float ego_s, vector<vector<double>> sensor_fusion) {
     double front_margin = 20.0;
-    double rear_margin = 20.0;
+    double rear_margin = 15.0;
 
     if(current_lane == 1) {
         front_margin = 35.0;
     }
     Vehicle vehicle_ahead, vehicle_behind;
     get_nearest_vehicles(ego_s, sensor_fusion, intended_lane, vehicle_ahead, vehicle_behind);
-    if(vehicle_ahead.s - ego_s > front_margin && ego_s - vehicle_behind.s > rear_margin)
+    double speed_buffer = std::max(0.0f,vehicle_behind.ref_vel - ref_vel)*(40.0/ref_vel);
+    if(vehicle_ahead.s - ego_s > front_margin && ego_s - vehicle_behind.s > rear_margin + speed_buffer)
         return true;
     else
         return false;
@@ -572,43 +573,6 @@ Trajectory Vehicle::keep_lane_trajectory(string state, vector<vector<double>> se
   return trajectory;
 }
 
-//vector<Vehicle> Vehicle::prep_lane_change_trajectory(string state, vector<vector<double>> sensor_fusion) {
-  // Generate a trajectory preparing for a lane change.
-  //float new_s;
-  //float new_v;
-  //float new_a;
-  //Vehicle vehicle_behind;
-  //int new_lane = this->lane + lane_direction[state];
-  //vector<Vehicle> trajectory = {Vehicle(this->lane, this->s, this->v, this->a, 
-  //                                      this->state)};
-  //vector<float> curr_lane_new_kinematics = get_kinematics(predictions, this->lane);
-
-  //if (get_vehicle_behind(predictions, this->lane, vehicle_behind)) {
-  //  // Keep speed of current lane so as not to collide with car behind.
-  //  new_s = curr_lane_new_kinematics[0];
-  //  new_v = curr_lane_new_kinematics[1];
-  //  new_a = curr_lane_new_kinematics[2];    
-  //} else {
-  //  vector<float> best_kinematics;
-  //  vector<float> next_lane_new_kinematics = get_kinematics(predictions, new_lane);
-  //  // Choose kinematics with lowest velocity.
-  //  if (next_lane_new_kinematics[1] < curr_lane_new_kinematics[1]) {
-  //    best_kinematics = next_lane_new_kinematics;
-  //  } else {
-  //    best_kinematics = curr_lane_new_kinematics;
-  //  }
-  //  new_s = best_kinematics[0];
-  //  new_v = best_kinematics[1];
-  //  new_a = best_kinematics[2];
-  //}
-
-  //trajectory.push_back(Vehicle(this->lane, new_s, new_v, new_a, state));
-
-//  Trajectory trajectory;
-//  
-//  return trajectory;
-//}
-
 Trajectory Vehicle::lane_change_trajectory(int intended_lane, vector<vector<double>> sensor_fusion) {
   Trajectory trajectory;
   int prev_size = previous_path_x.size();
@@ -617,6 +581,7 @@ Trajectory Vehicle::lane_change_trajectory(int intended_lane, vector<vector<doub
   double car_y = y;
   double car_s = s;
   double car_yaw = yaw;
+  Vehicle vehicle_ahead, vehicle_behind;
   //double ref_vel = this->ref_vel;
   int overlap_points = std::min(OVERLAP_POINTS,prev_size);
   //int overlap_points = previous_path_x.size();
@@ -627,33 +592,36 @@ Trajectory Vehicle::lane_change_trajectory(int intended_lane, vector<vector<doub
       ref_vel = previous_trajectory.velocities[consumed_points-1];
   else
       ref_vel = 0.0;
+  double check_car_s, spacing;
 
-  for (int i = 0; i < sensor_fusion.size(); i++) {
-      float d = sensor_fusion[i][6];
-      if (d < (2+4*lane+2) && d > (2+4*lane-2)) {
-          double vx = sensor_fusion[i][3];
-          double vy = sensor_fusion[i][4];
-          double check_speed = sqrt(vx*vx + vy*vy);
-          double check_car_s = sensor_fusion[i][5];
+  get_nearest_vehicles(car_s, sensor_fusion, lane, vehicle_ahead, vehicle_behind);
+  if(vehicle_ahead.s < 100000) {
+      double check_speed = vehicle_ahead.ref_vel;
+      check_car_s = vehicle_ahead.s + ((double) overlap_points*0.02*check_speed);
+      spacing = check_car_s - car_s;
+      
+      if (spacing < 30) {
+          //ref_vel = 29.5;
+          too_close = true;
 
-  
-          check_car_s += ((double) overlap_points*0.02*check_speed);
-          if ((check_car_s > car_s) && ((check_car_s - car_s) < 30)) {
-              //ref_vel = 29.5;
-              too_close = true;
-  
-          }
+
+          //if(lane + 1 < MAX_LANES && is_lane_change_safe(lane, lane+1, car_s, sensor_fusion)) {
+          //    intended_lane = lane+1;
+          //}
+          //else if (lane - 1 >= 0 && is_lane_change_safe(lane, lane-1, car_s, sensor_fusion)) {
+          //    intended_lane = lane-1;
+          //}
       }
   }
   
-  if (too_close) {
-    ref_vel -= 0.224; // Decrement by about 5 m/s
-    //std::cout << "decrementing ref_vel" << ref_vel;
-  }
-  else if (ref_vel < 49.0) {
-    ref_vel += 0.224;
-    //std::cout << "incrementing ref_vel" << ref_vel;
-  }
+//  if (too_close) {
+//    ref_vel -= 0.4*(1.0 - spacing/30.0); // Decrement by about 5 m/s
+//    //std::cout << "decrementing ref_vel" << ref_vel;
+//  }
+//  else if (ref_vel < 49.0) {
+//    ref_vel += 0.224;
+//    //std::cout << "incrementing ref_vel" << ref_vel;
+//  }
   if(!(too_close && intended_lane < MAX_LANES && intended_lane >= 0 && is_lane_change_safe(lane, intended_lane, car_s, sensor_fusion))) {
       return trajectory;
   }
@@ -754,7 +722,6 @@ Trajectory Vehicle::lane_change_trajectory(int intended_lane, vector<vector<doub
     trajectory.velocities.push_back(ref_vel);
   }
   
-  Vehicle vehicle_ahead, vehicle_behind;
   get_nearest_vehicles(car_s, sensor_fusion, intended_lane, vehicle_ahead, vehicle_behind);
   trajectory.lane_speed = vehicle_ahead.ref_vel;
   trajectory.vehicle_ahead_distance = vehicle_ahead.s - car_s;
@@ -825,7 +792,7 @@ void Vehicle::get_nearest_vehicles(float ego_s, vector<vector<double>> sensor_fu
   float rear_distance = 1000000;
   float front_distance = 1000000;
   vehicle_ahead.s = front_distance;
-  vehicle_ahead.ref_vel = 1000.0;
+  vehicle_ahead.ref_vel = 0.0;
   vehicle_behind.s = -rear_distance;
   for (int i=0; i < sensor_fusion.size(); i++) {
     temp_vehicle.d = sensor_fusion[i][6];
