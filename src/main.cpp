@@ -418,44 +418,48 @@ Trajectory Vehicle::keep_lane_trajectory(string state, vector<vector<double>> se
   double car_y = y;
   double car_s = s;
   double car_yaw = yaw;
+  Vehicle vehicle_ahead, vehicle_behind;
   //double ref_vel = this->ref_vel;
   int overlap_points = std::min(OVERLAP_POINTS,prev_size);
   //int overlap_points = previous_path_x.size();
   //
   int consumed_points = previous_trajectory.xlocs.size() - previous_path_x.size();
   std::cout << "consumed_points = " << consumed_points << std::endl;
-  if(prev_size != 0) 
+  if(prev_size != 0) {
       ref_vel = previous_trajectory.velocities[consumed_points-1];
-  else
+  }
+  else {
       ref_vel = 0.0;
+  }
 
+  double check_car_s, spacing;
   intended_lane = lane;
-  for (int i = 0; i < sensor_fusion.size(); i++) {
-      float d = sensor_fusion[i][6];
-      if (d < (2+4*lane+2) && d > (2+4*lane-2)) {
-          double vx = sensor_fusion[i][3];
-          double vy = sensor_fusion[i][4];
-          double check_speed = sqrt(vx*vx + vy*vy);
-          double check_car_s = sensor_fusion[i][5];
 
-  
-          check_car_s += ((double) overlap_points*0.02*check_speed);
-          if ((check_car_s > car_s) && ((check_car_s - car_s) < 30)) {
-              //ref_vel = 29.5;
-              too_close = true;
-  
-              //if(lane + 1 < MAX_LANES && is_lane_change_safe(lane, lane+1, car_s, sensor_fusion)) {
-              //    intended_lane = lane+1;
-              //}
-              //else if (lane - 1 >= 0 && is_lane_change_safe(lane, lane-1, car_s, sensor_fusion)) {
-              //    intended_lane = lane-1;
-              //}
-          }
+  get_nearest_vehicles(car_s, sensor_fusion, lane, vehicle_ahead, vehicle_behind);
+  if(vehicle_ahead.s < 100000) {
+      double check_speed = vehicle_ahead.ref_vel;
+      check_car_s = vehicle_ahead.s + ((double) overlap_points*0.02*check_speed);
+      spacing = check_car_s - car_s;
+      
+      if (spacing < 30) {
+          //ref_vel = 29.5;
+          too_close = true;
+
+
+          //if(lane + 1 < MAX_LANES && is_lane_change_safe(lane, lane+1, car_s, sensor_fusion)) {
+          //    intended_lane = lane+1;
+          //}
+          //else if (lane - 1 >= 0 && is_lane_change_safe(lane, lane-1, car_s, sensor_fusion)) {
+          //    intended_lane = lane-1;
+          //}
       }
   }
   
   if (too_close) {
-    ref_vel -= 0.224; // Decrement by about 5 m/s
+
+      std::cout << "spacing =" << spacing << "ref_vel = " << ref_vel << "ahead vel = " << vehicle_ahead.ref_vel << std::endl;
+      if (ref_vel > vehicle_ahead.ref_vel)
+          ref_vel -= 0.4*(1.0 - spacing/30.0); // Decrement by about 5 m/s
     //std::cout << "decrementing ref_vel" << ref_vel;
   }
   else if (ref_vel < 49.0) {
@@ -559,7 +563,6 @@ Trajectory Vehicle::keep_lane_trajectory(string state, vector<vector<double>> se
     trajectory.velocities.push_back(ref_vel);
   }
 
-  Vehicle vehicle_ahead, vehicle_behind;
   get_nearest_vehicles(car_s, sensor_fusion, intended_lane, vehicle_ahead, vehicle_behind);
   trajectory.lane_speed = vehicle_ahead.ref_vel;
   trajectory.vehicle_ahead_distance = vehicle_ahead.s - car_s;
