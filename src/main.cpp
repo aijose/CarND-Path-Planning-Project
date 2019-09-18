@@ -322,9 +322,9 @@ Trajectory Vehicle::generate_trajectory(string state, vector<vector<double>> sen
   if (state.compare("CS") == 0) {
     trajectory = constant_speed_trajectory();
   } else if (state.compare("KL") == 0) {
-    trajectory = keep_lane_trajectory(state, sensor_fusion);
+    trajectory = keep_lane_trajectory(sensor_fusion);
   } else if (state.compare("LCL") == 0 || state.compare("LCR") == 0) {
-      //trajectory = keep_lane_trajectory(state, sensor_fusion);
+      //trajectory = keep_lane_trajectory(sensor_fusion);
       if(state.compare("LCL") == 0) {
           trajectory = lane_change_trajectory(lane-1, sensor_fusion);
           trajectory.intended_lane = lane-1;
@@ -405,11 +405,17 @@ vector<string> Vehicle::successor_states() {
     states.push_back("LCL");
     states.push_back("LCR");
   }     
+  if(state.compare("LCL") == 0) {
+    states.push_back("LCL");
+  }
+  if(state.compare("LCR") == 0) {
+    states.push_back("LCR");
+  }
   // If state is "LCL" or "LCR", then just return "KL"
   return states;
 }
 
-Trajectory Vehicle::keep_lane_trajectory(string state, vector<vector<double>> sensor_fusion) {
+Trajectory Vehicle::keep_lane_trajectory(vector<vector<double>> sensor_fusion) {
   // Generate a keep lane trajectory.
   Trajectory trajectory;
   int prev_size = previous_path_x.size();
@@ -622,7 +628,7 @@ Trajectory Vehicle::lane_change_trajectory(int intended_lane, vector<vector<doub
 //    ref_vel += 0.224;
 //    //std::cout << "incrementing ref_vel" << ref_vel;
 //  }
-  if(!(too_close && intended_lane < MAX_LANES && intended_lane >= 0 && is_lane_change_safe(lane, intended_lane, car_s, sensor_fusion))) {
+  if(!(too_close && spacing > 10.0 && intended_lane < MAX_LANES && intended_lane >= 0 && is_lane_change_safe(lane, intended_lane, car_s, sensor_fusion))) {
       return trajectory;
   }
   

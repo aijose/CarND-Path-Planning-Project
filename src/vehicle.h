@@ -45,7 +45,7 @@ class Vehicle {
 
   Trajectory constant_speed_trajectory();
 
-  Trajectory keep_lane_trajectory(string state, vector<vector<double>> sensor_fusion);
+  Trajectory keep_lane_trajectory(vector<vector<double>> sensor_fusion);
 
   Trajectory lane_change_trajectory(int intended_lane, vector<vector<double>> sensor_fusion);
 
