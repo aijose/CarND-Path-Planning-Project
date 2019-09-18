@@ -155,7 +155,7 @@ for(int i=0; i < states.size(); i++) {
 //auto best_trajectory = ego.generate_trajectory(best_state, sensor_fusion);
 
 ego.previous_trajectory = best_trajectory;
-ego.lane = best_trajectory.intended_lane;
+//ego.lane = best_trajectory.intended_lane;
 //ego.state = best_state;
 //ego.ref_vel = best_trajectory.modified_velocity;
 next_x_vals = best_trajectory.xlocs;
@@ -339,11 +339,11 @@ Trajectory Vehicle::generate_trajectory(string state, vector<vector<double>> sen
 }
 
 bool Vehicle::is_lane_change_safe(int current_lane, int intended_lane, float ego_s, vector<vector<double>> sensor_fusion) {
-    double front_margin = 20.0;
-    double rear_margin = 20.0;
+    double front_margin = 35.0;
+    double rear_margin = 35.0;
 
     if(current_lane == 1) {
-        front_margin = 35.0;
+        front_margin = 40.0;
     }
     Vehicle vehicle_ahead, vehicle_behind;
     get_nearest_vehicles(ego_s, sensor_fusion, intended_lane, vehicle_ahead, vehicle_behind);
@@ -466,7 +466,7 @@ Trajectory Vehicle::keep_lane_trajectory(vector<vector<double>> sensor_fusion) {
 
       std::cout << "spacing =" << spacing << "ref_vel = " << ref_vel << "ahead vel = " << vehicle_ahead.ref_vel << std::endl;
       if (ref_vel > vehicle_ahead.ref_vel)
-          ref_vel -= 0.4*(1.0 - spacing/30.0); // Decrement by about 5 m/s
+          ref_vel -= 0.224*(1.0 - spacing/30.0); // Decrement by about 5 m/s
     //std::cout << "decrementing ref_vel" << ref_vel;
   }
   else if (ref_vel < 49.0) {
