@@ -340,7 +340,7 @@ Trajectory Vehicle::generate_trajectory(string state, vector<vector<double>> sen
 
 bool Vehicle::is_lane_change_safe(int current_lane, int intended_lane, float ego_s, vector<vector<double>> sensor_fusion) {
     double front_margin = 20.0;
-    double rear_margin = 15.0;
+    double rear_margin = 20.0;
 
     if(current_lane == 1) {
         front_margin = 35.0;
@@ -470,7 +470,7 @@ Trajectory Vehicle::keep_lane_trajectory(vector<vector<double>> sensor_fusion) {
     //std::cout << "decrementing ref_vel" << ref_vel;
   }
   else if (ref_vel < 49.0) {
-    ref_vel += 0.224;
+    ref_vel += 0.112;
     //std::cout << "incrementing ref_vel" << ref_vel;
   }
   
@@ -553,6 +553,16 @@ Trajectory Vehicle::keep_lane_trajectory(vector<vector<double>> sensor_fusion) {
     double N = (target_distance/(0.02 * ref_vel/2.24));
     double x_point  = x_add_on + target_x/N;
     double y_point  = s(x_point);
+
+    if(too_close) {
+        if(ref_vel > vehicle_ahead.ref_vel)
+            ref_vel -= 0.112;
+    }
+    else {
+        if(ref_vel < 49.0)
+            ref_vel += 0.112;
+    }
+
   
     x_add_on = x_point;
   
