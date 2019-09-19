@@ -110,77 +110,55 @@ int main() {
            *   sequentially every .02 seconds
            */
 
-int prev_size = previous_path_x.size();
+          int prev_size = previous_path_x.size();
 
-//if (prev_size > 0) {
-//  car_s = end_path_s;
-//}
+          //if (prev_size > 0) {
+          //  car_s = end_path_s;
+          //}
 
+          // find ref_v to use
 
-// find ref_v to use
+          ego.x = car_x;
+          ego.y = car_y;
+          ego.s = car_s;
+          ego.d = car_d;
+          ego.determine_lane(car_d);
+          ego.yaw = car_yaw;
+          ego.previous_path_x.resize(previous_path_x.size());
+          ego.previous_path_y.resize(previous_path_y.size());
+          for(int i=0; i < previous_path_x.size(); i++) {
+              ego.previous_path_x[i] = previous_path_x[i];
+              ego.previous_path_y[i] = previous_path_y[i];
+          }
 
-ego.x = car_x;
-ego.y = car_y;
-ego.s = car_s;
-ego.d = car_d;
-ego.determine_lane(car_d);
-ego.yaw = car_yaw;
-ego.previous_path_x.resize(previous_path_x.size());
-ego.previous_path_y.resize(previous_path_y.size());
-for(int i=0; i < previous_path_x.size(); i++) {
-ego.previous_path_x[i] = previous_path_x[i];
-ego.previous_path_y[i] = previous_path_y[i];
-}
+          double min_cost = 1000000.0;
+          Trajectory trajectory, best_trajectory;
+          string best_state;
+          //vector<Trajectory> all_trajectories;
+          vector<std::string> states = ego.successor_states();
+          for(int i=0; i < states.size(); i++) {
+              std::string state = states[i];
+              trajectory = ego.generate_trajectory(state, sensor_fusion);
+              //all_trajectories.push_back(trajectory);
+              float cost = min_cost;
+              if (trajectory.xlocs.size() > 0)
+                  cost = ego.compute_cost(trajectory);
+              std::cout<< state << " cost : " << cost << std::endl;
+              if (cost < min_cost) {
+                  best_trajectory = trajectory;
+                  best_state = state;
+              }
+          }
 
-double min_cost = 1000000.0;
-Trajectory trajectory, best_trajectory;
-string best_state;
-//vector<Trajectory> all_trajectories;
-vector<std::string> states = ego.successor_states();
-for(int i=0; i < states.size(); i++) {
-    std::string state = states[i];
-    trajectory = ego.generate_trajectory(state, sensor_fusion);
-    //all_trajectories.push_back(trajectory);
-    float cost = min_cost;
-    if (trajectory.xlocs.size() > 0)
-        cost = ego.compute_cost(trajectory);
-    std::cout<< state << " cost : " << cost << std::endl;
-    if (cost < min_cost) {
-        best_trajectory = trajectory;
-        best_state = state;
-    }
-}
+          //string best_state = "KL";
+          //auto best_trajectory = ego.generate_trajectory(best_state, sensor_fusion);
 
-//string best_state = "KL";
-//auto best_trajectory = ego.generate_trajectory(best_state, sensor_fusion);
-
-ego.previous_trajectory = best_trajectory;
-//ego.lane = best_trajectory.intended_lane;
-//ego.state = best_state;
-//ego.ref_vel = best_trajectory.modified_velocity;
-next_x_vals = best_trajectory.xlocs;
-next_y_vals = best_trajectory.ylocs;
-//for(int i=0; i < next_x_vals.size(); i++) {
-//  std::cout<<next_x_vals[i]<< " " << next_y_vals[i] << std::endl;
-//
-//}
-
-//for (int i=0; i < nstates; i++) {
-//    auto trajectory = ego.generate_trajectory(state, sensor_fusion, trajectory_x, trajectory_y);
-    //double cost = ego.compute_cost(sensor_fusion);
-    //if (cost < min_cost) {
-    //    double best_cost = cost;
-    //    vector<double> best_trajectory_x = trajectory_x;
-    //    vector<double> best_trajectory_y = trajectory_y;
-    //    best_state = i;
-    //}
-//}
-
-
-//std::cout << "Next Vals:" << std::endl;
-//for (int i = 0; i < next_x_vals.size(); i++) {
-//  std::cout << next_x_vals[i] << " " << next_y_vals[i] << std::endl;
-//}
+          ego.previous_trajectory = best_trajectory;
+          //ego.lane = best_trajectory.intended_lane;
+          //ego.state = best_state;
+          //ego.ref_vel = best_trajectory.modified_velocity;
+          next_x_vals = best_trajectory.xlocs;
+          next_y_vals = best_trajectory.ylocs;
 
           msgJson["next_x"] = next_x_vals;
           msgJson["next_y"] = next_y_vals;
@@ -243,78 +221,6 @@ Vehicle::Vehicle(int lane, float s, float v, float a, string state) {
 
 Vehicle::~Vehicle() {}
 
-//vector<Vehicle> Vehicle::choose_next_state(map<int, vector<Vehicle>> &predictions) {
-//  /**
-//   * Here you can implement the transition_function code from the Behavior 
-//   *   Planning Pseudocode classroom concept.
-//   *
-//   * @param A predictions map. This is a map of vehicle id keys with predicted
-//   *   vehicle trajectories as values. Trajectories are a vector of Vehicle 
-//   *   objects representing the vehicle at the current timestep and one timestep
-//   *   in the future.
-//   * @output The best (lowest cost) trajectory corresponding to the next ego 
-//   *   vehicle state.
-//   *
-//   * Functions that will be useful:
-//   * 1. successor_states - Uses the current state to return a vector of possible
-//   *    successor states for the finite state machine.
-//   * 2. generate_trajectory - Returns a vector of Vehicle objects representing 
-//   *    a vehicle trajectory, given a state and predictions. Note that 
-//   *    trajectory vectors might have size 0 if no possible trajectory exists 
-//   *    for the state. 
-//   * 3. calculate_cost - Included from cost.cpp, computes the cost for a trajectory.
-//   *
-//   * TODO: Your solution here.
-//   */
-//  vector<string> states = successor_states();
-//  float cost;
-//  vector<float> costs;
-//  vector<vector<Vehicle>> final_trajectories;
-//
-//  for (vector<string>::iterator it = states.begin(); it != states.end(); ++it) {
-//    vector<Vehicle> trajectory = generate_trajectory(*it, predictions);
-//    if (trajectory.size() != 0) {
-//      cost = calculate_cost(*this, predictions, trajectory);
-//      costs.push_back(cost);
-//      final_trajectories.push_back(trajectory);
-//    }
-//  }
-//
-//  vector<float>::iterator best_cost = min_element(begin(costs), end(costs));
-//  int best_idx = distance(begin(costs), best_cost);
-//
-//  /**
-//   * TODO: Change return value here:
-//   */
-//  return final_trajectories[best_idx];
-//}
-
-//vector<string> Vehicle::successor_states() {
-//  // Provides the possible next states given the current state for the FSM 
-//  //   discussed in the course, with the exception that lane changes happen 
-//  //   instantaneously, so LCL and LCR can only transition back to KL.
-//  vector<string> states;
-//  states.push_back("KL");
-//  string state = this->state;
-//  if(state.compare("KL") == 0) {
-//    states.push_back("PLCL");
-//    states.push_back("PLCR");
-//  } else if (state.compare("PLCL") == 0) {
-//    if (lane != lanes_available - 1) {
-//      states.push_back("PLCL");
-//      states.push_back("LCL");
-//    }
-//  } else if (state.compare("PLCR") == 0) {
-//    if (lane != 0) {
-//      states.push_back("PLCR");
-//      states.push_back("LCR");
-//    }
-//  }
-//    
-//  // If state is "LCL" or "LCR", then just return "KL"
-//  return states;
-//}
-
 Trajectory Vehicle::generate_trajectory(string state, vector<vector<double>> sensor_fusion) {
   // Given a possible next state, generate the appropriate trajectory to realize
   //   the next state.
@@ -354,40 +260,6 @@ bool Vehicle::is_lane_change_safe(int current_lane, int intended_lane, float ego
         return false;
 }
 
-//vector<float> Vehicle::get_kinematics(map<int, vector<Vehicle>> &predictions, 
-//                                      int lane) {
-//  // Gets next timestep kinematics (position, velocity, acceleration) 
-//  //   for a given lane. Tries to choose the maximum velocity and acceleration, 
-//  //   given other vehicle positions and accel/velocity constraints.
-//  float max_velocity_accel_limit = this->max_acceleration + this->v;
-//  float new_position;
-//  float new_velocity;
-//  float new_accel;
-//  Vehicle vehicle_ahead;
-//  Vehicle vehicle_behind;
-//
-//  //NOTE: Code below should be modified to use delta_t=0.02 instead of delta_t=1
-//  if (get_vehicle_ahead(predictions, lane, vehicle_ahead)) {
-//    if (get_vehicle_behind(predictions, lane, vehicle_behind)) {
-//      // must travel at the speed of traffic, regardless of preferred buffer
-//      new_velocity = vehicle_ahead.v;
-//    } else {
-//      float max_velocity_in_front = (vehicle_ahead.s - this->s 
-//                                  - this->preferred_buffer) + vehicle_ahead.v 
-//                                  - 0.5 * (this->a);
-//      new_velocity = std::min(std::min(max_velocity_in_front, 
-//                                       max_velocity_accel_limit), 
-//                                       this->target_speed);
-//    }
-//  } else {
-//    new_velocity = std::min(max_velocity_accel_limit, this->target_speed);
-//  }
-//    
-//  new_accel = new_velocity - this->v; // Equation: (v_1 - v_0)/t = acceleration
-//  new_position = this->s + new_velocity + new_accel / 2.0;
-//    
-//  return{new_position, new_velocity, new_accel};
-//}
 
 Trajectory Vehicle::constant_speed_trajectory() {
   // Generate a constant speed trajectory.
@@ -754,36 +626,6 @@ void Vehicle::determine_lane(float vehicle_d) {
     }
 }
 
-//void Vehicle::increment(int dt = 1) {
-//  this->s = position_at(dt);
-//}
-//
-//float Vehicle::position_at(int t) {
-//  return this->s + this->v*t + this->a*t*t/2.0;
-//}
-//
-//bool Vehicle::get_vehicle_behind(map<int, vector<Vehicle>> &predictions, 
-//                                 int lane, Vehicle &rVehicle) {
-//  // Returns a true if a vehicle is found behind the current vehicle, false 
-//  //   otherwise. The passed reference rVehicle is updated if a vehicle is found.
-//  int max_s = -1;
-//  bool found_vehicle = false;
-//  Vehicle temp_vehicle;
-//  for (map<int, vector<Vehicle>>::iterator it = predictions.begin(); 
-//       it != predictions.end(); ++it) {
-//    temp_vehicle = it->second[0];
-//    if (temp_vehicle.lane == this->lane && temp_vehicle.s < this->s 
-//        && temp_vehicle.s > max_s) {
-//      max_s = temp_vehicle.s;
-//      rVehicle = temp_vehicle;
-//      found_vehicle = true;
-//    }
-//  }
-//  
-//  return found_vehicle;
-//}
-//
-
 float Vehicle::compute_cost(Trajectory trajectory) {
     float cost;
     if(trajectory.xlocs.size() == 0) return 1000000.0;
@@ -832,44 +674,3 @@ void Vehicle::get_nearest_vehicles(float ego_s, vector<vector<double>> sensor_fu
     }
   }
 }
-
-//  return found_vehicle;
-//}
-//
-//vector<Vehicle> Vehicle::generate_predictions(int horizon) {
-//  // Generates predictions for non-ego vehicles to be used in trajectory 
-//  //   generation for the ego vehicle.
-//
-//  //   NOTE: predictions based on delet_t=1, needs to be modified
-//  vector<Vehicle> predictions;
-//  for(int i = 0; i < horizon; ++i) {
-//    float next_s = position_at(i);
-//    float next_v = 0;
-//    if (i < horizon-1) {
-//      next_v = position_at(i+1) - s;
-//    }
-//    predictions.push_back(Vehicle(this->lane, next_s, next_v, 0));
-//  }
-//  
-//  return predictions;
-//}
-//
-//void Vehicle::realize_next_state(vector<Vehicle> &trajectory) {
-//  // Sets state and kinematics for ego vehicle using the last state of the trajectory.
-//  Vehicle next_state = trajectory[1];
-//  this->state = next_state.state;
-//  this->lane = next_state.lane;
-//  this->s = next_state.s;
-//  this->v = next_state.v;
-//  this->a = next_state.a;
-//}
-//
-//void Vehicle::configure(vector<int> &road_data) {
-//  // Called by simulator before simulation begins. Sets various parameters which
-//  //   will impact the ego vehicle.
-//  target_speed = road_data[0];
-//  lanes_available = road_data[1];
-//  goal_s = road_data[2];
-//  goal_lane = road_data[3];
-//  max_acceleration = road_data[4];
-//}

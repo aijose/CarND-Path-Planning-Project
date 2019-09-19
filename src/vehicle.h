@@ -34,14 +34,9 @@ class Vehicle {
   // Destructor
   virtual ~Vehicle();
 
-  // Vehicle functions
-  //vector<Vehicle> choose_next_state(map<int, vector<Vehicle>> &predictions);
-
   vector<string> successor_states();
 
   Trajectory generate_trajectory(string state, vector<vector<double>> sensor_fusion);
-
-  //vector<float> get_kinematics(map<int, vector<Vehicle>> &predictions, int lane);
 
   Trajectory constant_speed_trajectory();
 
@@ -59,31 +54,6 @@ class Vehicle {
   void get_lane_speed(float ego_s, int vehicle_lane, vector<vector<double>> sensor_fusion);
 
   bool is_lane_change_safe(int current_lane, int intended_lane, float ego_s, vector<vector<double>> sensor_fusion);
-
-  //vector<Vehicle> prep_lane_change_trajectory(string state, 
-  //                                            map<int, vector<Vehicle>> &predictions);
-
-  //void increment(int dt);
-
-  //float position_at(int t);
-
-  //bool get_vehicle_behind(map<int, vector<Vehicle>> &predictions, int lane, 
-  //                        Vehicle &rVehicle);
-
-  //bool get_vehicle_ahead(map<int, vector<Vehicle>> &predictions, int lane, 
-  //                       Vehicle &rVehicle);
-
-  //vector<Vehicle> generate_predictions(int horizon=2);
-
-  //void realize_next_state(vector<Vehicle> &trajectory);
-
-  //void configure(vector<int> &road_data);
-
-  // public Vehicle variables
-  //struct collider{
-  //  bool collision; // is there a collision?
-  //  int  time; // time collision happens
-  //};
 
   map<string, int> lane_direction = {{"PLCL", 1}, {"LCL", 1}, 
                                      {"LCR", -1}, {"PLCR", -1}};
