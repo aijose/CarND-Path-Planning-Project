@@ -140,11 +140,10 @@ int main() {
               std::string state = states[i];
               trajectory = ego.generate_trajectory(state, sensor_fusion);
               //all_trajectories.push_back(trajectory);
-              float cost = min_cost;
-              if (trajectory.xlocs.size() > 0)
-                  cost = ego.compute_cost(trajectory);
+              float cost = ego.compute_cost(trajectory);
               std::cout<< state << " cost : " << cost << std::endl;
               if (cost < min_cost) {
+                  min_cost = cost;
                   best_trajectory = trajectory;
                   best_state = state;
               }
@@ -223,20 +222,19 @@ Vehicle::~Vehicle() {}
 Trajectory Vehicle::generate_trajectory(string state, vector<vector<double>> sensor_fusion) {
   // Given a possible next state, generate the appropriate trajectory to realize
   //   the next state.
-  Trajectory trajectory;
-  if (state.compare("KL") == 0) {
-    trajectory = keep_lane_trajectory(sensor_fusion);
-  } else if (state.compare("LCL") == 0 || state.compare("LCR") == 0) {
-      //trajectory = keep_lane_trajectory(sensor_fusion);
-      if(state.compare("LCL") == 0) {
-          trajectory = lane_change_trajectory(lane-1, sensor_fusion);
-          trajectory.intended_lane = lane-1;
-      }
-      else {
-          trajectory = lane_change_trajectory(lane+1, sensor_fusion);
-          trajectory.intended_lane = lane+1;
-      }
-  } 
+    Trajectory trajectory;
+    if (state.compare("KL") == 0) {
+        trajectory = keep_lane_trajectory(sensor_fusion);
+        trajectory.intended_lane = lane;
+    } 
+    else if(state.compare("LCL") == 0) {
+        trajectory = lane_change_trajectory(lane-1, sensor_fusion);
+        trajectory.intended_lane = lane-1;
+    }
+    else {
+        trajectory = lane_change_trajectory(lane+1, sensor_fusion);
+        trajectory.intended_lane = lane+1;
+    }
 
   return trajectory;
 }
@@ -638,15 +636,15 @@ void Vehicle::determine_lane(float vehicle_d) {
 float Vehicle::compute_cost(Trajectory trajectory) {
     float cost;
     if(trajectory.xlocs.size() == 0) return 1000000.0;
-    if(trajectory.intended_lane == 0) {
-        cost = 500.0;
+    if(trajectory.intended_lane == lane) {
+        cost = 750.0;
     }
-    else if(trajectory.intended_lane == 1) {
-        cost = 250.0;
+    else if(trajectory.intended_lane == 2) {
+        cost = 500.0;
     } 
     else {
-        if (trajectory.intended_lane == 2)
-            cost = 750.0;
+        if (trajectory.intended_lane == 0)
+            cost = 250.0;
         else
             cost = 0.0;
     }
