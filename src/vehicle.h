@@ -22,7 +22,6 @@ struct Trajectory {
     float vehicle_ahead_distance;
     float lane_speed;
     int intended_lane;
-    int modified_velocity;
 };
 
 class Vehicle {

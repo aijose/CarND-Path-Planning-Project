@@ -155,8 +155,7 @@ int main() {
 
           ego.previous_trajectory = best_trajectory;
           //ego.lane = best_trajectory.intended_lane;
-          //ego.state = best_state;
-          //ego.ref_vel = best_trajectory.modified_velocity;
+          ego.state = best_state;
           next_x_vals = best_trajectory.xlocs;
           next_y_vals = best_trajectory.ylocs;
 
@@ -225,9 +224,7 @@ Trajectory Vehicle::generate_trajectory(string state, vector<vector<double>> sen
   // Given a possible next state, generate the appropriate trajectory to realize
   //   the next state.
   Trajectory trajectory;
-  if (state.compare("CS") == 0) {
-    trajectory = constant_speed_trajectory();
-  } else if (state.compare("KL") == 0) {
+  if (state.compare("KL") == 0) {
     trajectory = keep_lane_trajectory(sensor_fusion);
   } else if (state.compare("LCL") == 0 || state.compare("LCR") == 0) {
       //trajectory = keep_lane_trajectory(sensor_fusion);
@@ -293,6 +290,7 @@ Trajectory Vehicle::keep_lane_trajectory(vector<vector<double>> sensor_fusion) {
   int prev_size = previous_path_x.size();
   int intended_lane;
   bool too_close = false;
+  bool very_close = false;
   double car_x = x;
   double car_y = y;
   double car_s = s;
@@ -317,7 +315,8 @@ Trajectory Vehicle::keep_lane_trajectory(vector<vector<double>> sensor_fusion) {
   get_nearest_vehicles(car_s, sensor_fusion, lane, vehicle_ahead, vehicle_behind);
   if(vehicle_ahead.s < 100000) {
       double check_speed = vehicle_ahead.ref_vel;
-      check_car_s = vehicle_ahead.s + ((double) overlap_points*0.02*check_speed);
+      //check_car_s = vehicle_ahead.s + ((double) overlap_points*0.02*check_speed);
+      check_car_s = vehicle_ahead.s;
       spacing = check_car_s - car_s;
       
       if (spacing < 30) {
@@ -338,7 +337,14 @@ Trajectory Vehicle::keep_lane_trajectory(vector<vector<double>> sensor_fusion) {
 
       std::cout << "spacing =" << spacing << "ref_vel = " << ref_vel << "ahead vel = " << vehicle_ahead.ref_vel << std::endl;
       if (ref_vel > vehicle_ahead.ref_vel)
-          ref_vel -= 0.224*(1.0 - spacing/30.0); // Decrement by about 5 m/s
+          if(spacing <= 30 && spacing > 10)
+              ref_vel -= 0.224*(1.0 - spacing/30.0); // Decrement by about 5 m/s
+          else {
+              ref_vel -= 0.224*(1.0 - 1.0/3.0) + 0.2*(1.0-spacing/10.0);
+              very_close = true;
+          }
+
+      
     //std::cout << "decrementing ref_vel" << ref_vel;
   }
   else if (ref_vel < 49.0) {
@@ -427,8 +433,12 @@ Trajectory Vehicle::keep_lane_trajectory(vector<vector<double>> sensor_fusion) {
     double y_point  = s(x_point);
 
     if(too_close) {
-        if(ref_vel > vehicle_ahead.ref_vel)
+        if (very_close) {
+              ref_vel -= 0.224*(1.0 - 1.0/3.0) + 0.2*(1.0-spacing/10.0);
+        }
+        else if(ref_vel > vehicle_ahead.ref_vel) {
             ref_vel -= 0.112;
+        }
     }
     else {
         if(ref_vel < 49.0)
@@ -455,7 +465,6 @@ Trajectory Vehicle::keep_lane_trajectory(vector<vector<double>> sensor_fusion) {
   get_nearest_vehicles(car_s, sensor_fusion, intended_lane, vehicle_ahead, vehicle_behind);
   trajectory.lane_speed = vehicle_ahead.ref_vel;
   trajectory.vehicle_ahead_distance = vehicle_ahead.s - car_s;
-  trajectory.modified_velocity = ref_vel;
   trajectory.intended_lane = intended_lane;
   
   return trajectory;
@@ -485,7 +494,8 @@ Trajectory Vehicle::lane_change_trajectory(int intended_lane, vector<vector<doub
   get_nearest_vehicles(car_s, sensor_fusion, lane, vehicle_ahead, vehicle_behind);
   if(vehicle_ahead.s < 100000) {
       double check_speed = vehicle_ahead.ref_vel;
-      check_car_s = vehicle_ahead.s + ((double) overlap_points*0.02*check_speed);
+      //check_car_s = vehicle_ahead.s + ((double) overlap_points*0.02*check_speed);
+      check_car_s = vehicle_ahead.s;
       spacing = check_car_s - car_s;
       
       if (spacing < 30) {
@@ -613,7 +623,6 @@ Trajectory Vehicle::lane_change_trajectory(int intended_lane, vector<vector<doub
   get_nearest_vehicles(car_s, sensor_fusion, intended_lane, vehicle_ahead, vehicle_behind);
   trajectory.lane_speed = vehicle_ahead.ref_vel;
   trajectory.vehicle_ahead_distance = vehicle_ahead.s - car_s;
-  trajectory.modified_velocity = ref_vel;
   trajectory.intended_lane = intended_lane;
   return trajectory;
 }
@@ -629,15 +638,15 @@ void Vehicle::determine_lane(float vehicle_d) {
 float Vehicle::compute_cost(Trajectory trajectory) {
     float cost;
     if(trajectory.xlocs.size() == 0) return 1000000.0;
-    if(trajectory.intended_lane == lane) {
-        cost = 750.0;
+    if(trajectory.intended_lane == 0) {
+        cost = 500.0;
     }
     else if(trajectory.intended_lane == 1) {
-        cost = 500.0;
+        cost = 250.0;
     } 
     else {
         if (trajectory.intended_lane == 2)
-            cost = 250.0;
+            cost = 750.0;
         else
             cost = 0.0;
     }
