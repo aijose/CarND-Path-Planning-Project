@@ -243,4 +243,79 @@ The trajectory generation code for the keep lane trajectory is shown below. The
 trajectory generation code for the lane change trajectory is simpler since the
 velocity is kept constant during lane change:
 
+```cpp
+vector<double> next_wp0 = getXY(car_s+30, (2+4*intended_lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
+vector<double> next_wp1 = getXY(car_s+60, (2+4*intended_lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
+vector<double> next_wp2 = getXY(car_s+90, (2+4*intended_lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
+
+ptsx.push_back(next_wp0[0]);
+ptsx.push_back(next_wp1[0]);
+ptsx.push_back(next_wp2[0]);
+
+ptsy.push_back(next_wp0[1]);
+ptsy.push_back(next_wp1[1]);
+ptsy.push_back(next_wp2[1]);
+
+for (int i = 0; i < ptsx.size(); i++) {
+  double shift_x = ptsx[i] - ref_x;
+  double shift_y = ptsy[i] - ref_y;
+
+  ptsx[i] = (shift_x * cos(0 -  ref_yaw) - shift_y*sin(0-ref_yaw));
+  ptsy[i] = (shift_x * sin(0 -  ref_yaw) + shift_y*cos(0-ref_yaw));
+}
+
+tk::spline s;
+
+s.set_points(ptsx, ptsy);
+
+for (int i = 0; i < overlap_points; i++) {
+  trajectory.xlocs.push_back(previous_path_x[i]);
+  trajectory.ylocs.push_back(previous_path_y[i]);
+  trajectory.velocities.push_back(previous_trajectory.velocities[consumed_points+i]);
+}
+
+double target_x = 30.0;
+double target_y = s(target_x);
+double target_distance = sqrt(target_x*target_x + target_y*target_y);
+
+double x_add_on = 0.0;
+
+for (int i = 0; i <= TRAJECTORY_POINTS-overlap_points; i++) {
+  double x_point  = x_add_on + (target_x/target_distance)*(DT*v/MPH_TO_MS);
+  double y_point  = s(x_point);
+
+  if(too_close) {
+      if (very_close) {
+            v -= 0.224*(1.0 - 1.0/3.0) + 0.4*(1.0-spacing/10.0);
+      }
+      else if(v > vehicle_ahead.v) {
+          v -= 0.112;
+      }
+  }
+  else {
+      if(v < 49.0)
+          v += 0.112;
+  }
+
+
+  x_add_on = x_point;
+
+  double x_ref = x_point;
+  double y_ref = y_point;
+
+  x_point = (x_ref * cos(ref_yaw) - y_ref*sin(ref_yaw));
+  y_point = (x_ref * sin(ref_yaw) + y_ref*cos(ref_yaw));
+
+  x_point += ref_x;
+  y_point += ref_y;
+
+  trajectory.xlocs.push_back(x_point);
+  trajectory.ylocs.push_back(y_point);
+  trajectory.velocities.push_back(v);
+}```
+
 ### Video of Final Result
+
+The video showing successful completion of 10 miles (more than 2 laps around the track) without any incident is provided below:
+
+[![IMAGE ALT TEXT HERE](youtube.png)]()
