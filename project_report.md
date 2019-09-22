@@ -318,4 +318,4 @@ for (int i = 0; i <= TRAJECTORY_POINTS-overlap_points; i++) {
 
 The video showing successful completion of 10 miles (more than 2 laps around the track) without any incident is provided below:
 
-[![IMAGE ALT TEXT HERE](youtube.png)]()
+[![IMAGE ALT TEXT HERE](youtube.png)](https://youtu.be/3Ka_2-Hb6Vs)
