@@ -308,7 +308,7 @@ Trajectory Vehicle::keep_lane_trajectory(vector<vector<double>> sensor_fusion) {
           if(spacing <= 30 && spacing > 10)
               v -= 0.224*(1.0 - spacing/30.0); // Decrement by about 5 m/s
           else {
-              v -= 0.224*(1.0 - 1.0/3.0) + 0.2*(1.0-spacing/10.0);
+              v -= 0.224*(1.0 - 1.0/3.0) + 0.4*(1.0-spacing/10.0);
               very_close = true;
           }
   }
@@ -395,7 +395,7 @@ Trajectory Vehicle::keep_lane_trajectory(vector<vector<double>> sensor_fusion) {
 
     if(too_close) {
         if (very_close) {
-              v -= 0.224*(1.0 - 1.0/3.0) + 0.2*(1.0-spacing/10.0);
+              v -= 0.224*(1.0 - 1.0/3.0) + 0.4*(1.0-spacing/10.0);
         }
         else if(v > vehicle_ahead.v) {
             v -= 0.112;
