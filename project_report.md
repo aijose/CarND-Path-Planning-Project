@@ -239,4 +239,8 @@ is constant. For the keep lane trajectory, the spacing is affected by accelerati
 and decelerations in velocity depending on the distance of the vehicle from the
 vehicle immediately ahead of it.
 
+The trajectory generation code for the keep lane trajectory is shown below. The
+trajectory generation code for the lane change trajectory is simpler since the
+velocity is kept constant during lane change:
+
 ### Video of Final Result
