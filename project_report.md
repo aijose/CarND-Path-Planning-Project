@@ -312,7 +312,8 @@ for (int i = 0; i <= TRAJECTORY_POINTS-overlap_points; i++) {
   trajectory.xlocs.push_back(x_point);
   trajectory.ylocs.push_back(y_point);
   trajectory.velocities.push_back(v);
-}```
+}
+```
 
 ### Video of Final Result
 
