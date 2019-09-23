@@ -12,7 +12,6 @@ The goals / steps of this project are the following:
   * Acceleration greater than 10 m/sq-sec
   * Jerk of 10 m/cu-s
   * Straying outside the marked lanes except while changing lanes
-* Train and validate the model with a training and validation set
 * Test that the model successfully drives around track (4.32 miles) without any incidents
 * Summarize the solution approach with a written report
 
@@ -47,6 +46,7 @@ generates trajectories for all possible successor states. For each successor
 state, the cost of the trajectory is evaluated based on a cost function. The
 state corresponding to the trajectory with the least cost is chosen as the next
 state. The trajectory corresponding to the next state is provided to the simulator.
+The following code snippet shows the basic logic for choosing the best trajectory.
 
 ```cpp
 double min_cost = 1000000.0;
@@ -57,7 +57,6 @@ for(int i=0; i < states.size(); i++) {
     std::string state = states[i];
     trajectory = ego.generate_trajectory(state, sensor_fusion);
     float cost = ego.compute_cost(trajectory);
-    std::cout<< state << " cost : " << cost << std::endl;
     if (cost < min_cost) {
         min_cost = cost;
         best_trajectory = trajectory;
@@ -78,24 +77,27 @@ The following sub-sections describe the different states.
 
 #### Keep Lane State
 
-In this state, the sticks to its current lane. The key task in this state is
-controlling the velocity. Once the velocity is known the trajectory can be
+In this state, the ego vehicle sticks to its current lane. The key task in this state is
+controlling the velocity. Once the velocity is known, the trajectory can be
 easily determined by incrementally updating the vehicle position. For this purpose
 the vehicle can be assumed to be in three "sub-states":
 
-1. "Very close (VC)" to the vehicle ahead (corresponding to a distance less than 10 units). In this state, the vehicle velocity is decreased more drastically
+1. "Very close" to the vehicle ahead (corresponding to a distance less than 10 units). In this state, the vehicle velocity is decreased more drastically
 and linearly proportionate to the distance from the vehicle ahead. This sub-state
-is particularly important when a car from the adjacent lane abruptly changes into
-ego vehicles lane at a very close distance. Rapid acceleration is critical to
+is particularly important when a car from an adjacent lane abruptly changes into
+ego vehicles lane at a very close distance. Rapid deceleration is critical to
 avoid collision in such situations.
 
-2. "Too close (TC)" to the vehicle ahead (corresponding to a distance between 10 and 30 units). In this state, the vehicle velocity is decreased less drastically and linearly proportionate to the distance from the vehicle ahead.
+2. "Too close" to the vehicle ahead (corresponding to a distance between 10 and 30 units). In this state, the vehicle velocity is decreased less drastically and linearly proportionate to the distance from the vehicle ahead. Additionally, the
+ego vehicle's velocity is reduced only if its velocity is greater than the
+vehicle ahead.
 
 3. Far away from the vehicle ahead (corresponding to a distance greater than 30 units).
   In this state, the vehicle velocity is increased at a constant acceleration until
   the vehicle reaches a velocity of 49 mph beyond which it is keep constant.
 
-Trajectory generation for the KL state is relatively straightforward since it does not involve lane change. This is described in more detail in the section on trajectory generation.
+Trajectory generation for the KL state  is described in more detail in a later
+section on trajectory generation.
 
 #### Lane Change Left and Lane Change Right States
 
@@ -350,4 +352,4 @@ for (int i = 0; i <= TRAJECTORY_POINTS-overlap_points; i++) {
 
 The video showing successful completion of 10 miles (more than 2 laps around the track) without any incident is provided below:
 
-[![IMAGE ALT TEXT HERE](youtube.png)](https://youtu.be/3Ka_2-Hb6Vs)
+[![IMAGE ALT TEXT HERE](youtube.png)](https://youtu.be/RhxwWp9stts)
