@@ -34,7 +34,7 @@ The transitions between states in the FSM are shown in the image below:
 <img src="fsm.png" width="1000%" alt>
 </p>
 <p align="center">
-<em> Finite State Machine
+<em> Finite State Machine </em>
 </p>
 
 The car starts off in the KL state. The KL state can transition to the LCL and LCR
