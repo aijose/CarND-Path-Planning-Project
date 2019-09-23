@@ -139,6 +139,41 @@ else
 Once it is decided that lane change is safe, the next task for the LCL and LCR
 states is to create the trajectory for  the lane change. This is described in more detail in a later section.
 
+#### Cost Function
+
+The generated trajectories are evaluated using a cost function. For the purposes
+of this project, a very simple cost function was used. A simple cost function
+was adequate because feasibility and safety of the trajectory is already ensured
+before the cost function is evaluated.
+
+Firstly, if a lane change is at all feasible and safe, then it is assumed that
+the lane change operation has a higher cost than the keep lane trajectory.
+The keep lane trajectory is given the highest cost of 750. The a lane change is
+possible to the left or right lanes, then the left lane is preferred because
+the track is anti-clockwise and therefore the inner lane is likely to involve
+less overall distance. A more complex cost function may prove to be more
+efficient, but may also result in situations where the vehicle trajectory
+oscillates between two lanes leading to unexpected behavior. The cost function
+code is provided below:
+
+```cpp
+float cost;
+if(trajectory.xlocs.size() == 0) return 1000000.0;
+if(trajectory.intended_lane == lane) {
+    cost = 750.0;
+}
+else if(trajectory.intended_lane == 2) {
+    cost = 500.0;
+}
+else {
+    if (trajectory.intended_lane == 0)
+        cost = 250.0;
+    else
+        cost = 0.0;
+}
+return cost;
+```
+
 ### Compilation
 
 #### 1. The code compiles correctly
