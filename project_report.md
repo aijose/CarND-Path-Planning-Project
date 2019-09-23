@@ -319,19 +319,15 @@ for (int i = 0; i <= TRAJECTORY_POINTS-overlap_points; i++) {
   double x_point  = x_add_on + (target_x/target_distance)*(DT*v/MPH_TO_MS);
   double y_point  = s(x_point);
 
-  if(too_close) {
-      if (very_close) {
-            v -= 0.224*(1.0 - 1.0/3.0) + 0.4*(1.0-spacing/10.0);
-      }
-      else if(v > vehicle_ahead.v) {
-          v -= 0.112;
-      }
+  if(too_close && v > vehicle_ahead.v) {
+      v -= 0.112;
   }
-  else {
-      if(v < 49.0)
-          v += 0.112;
+  else if (very_close) {
+      v -= 0.224*(1.0 - 1.0/3.0) + 0.4*(1.0-spacing/10.0);
   }
-
+  else if(v < 49.0) {
+      v += 0.112;
+  }
 
   x_add_on = x_point;
 
