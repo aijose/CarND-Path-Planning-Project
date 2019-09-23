@@ -186,26 +186,7 @@ The project submission includes the following files:
 * spline.h contains the code for the spline function used to generate trajectories
 * project_report.md containing the writeup for this project
 
-Parameters involved:
-front_margin = 35 (40 if center lane)
-rear_margin = 35
-speed_buffer
-too_close_distance = 30
-very_close_distance = 10
-overlap_points
-waypoint distances 30, 60, 90
-TRAJECTORY_POINTS = 50
-max_velocity = 49
-Deceleration when too_close and very_close
-Acceleration when velocity < 49
-
-too_close_to_change_lanes=10
-
-cost for each lane
-
-
 ### Validation Trajectories
-
 
 #### 1. The car is able to drive at least 4.32 miles without incident
 
